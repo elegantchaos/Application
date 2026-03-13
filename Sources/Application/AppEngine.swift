@@ -30,6 +30,17 @@ import SwiftUI
   /// The state that the app is in.
   var state: AppState { get set }
 
+  /// The currently running startup task, if startup is in flight.
+  ///
+  /// The application loop owns this task explicitly so it can:
+  /// - avoid launching duplicate startup work,
+  /// - cancel startup during recovery, and
+  /// - clear the reference when startup finishes or is cancelled.
+  ///
+  /// Engines are expected to be long-lived, so this task is treated as
+  /// instance-owned lifecycle state rather than detached background work.
+  var startupTask: Task<Void, Never>? { get set }
+
   /// A view modifier which injects environment into a view.
   /// It should assume that the engine isn't fully started yet,
   /// and so (for example) it may not inject services that
@@ -66,14 +77,31 @@ import SwiftUI
           caughtError(error)
         }
       case .starting:
-        Task {
+        assert(startupTask == nil, "AppEngine entered .starting while startupTask was still active")
+        guard startupTask == nil else { return }
+
+        // Startup is represented by a single owned task. Holding it here lets
+        // the engine prevent duplicate launches and cancel the work if recovery
+        // rewinds the state machine while startup is still in flight.
+        let task = Task {
+          defer {
+            // Release ownership regardless of outcome so a later transition back
+            // to `.starting` can create a fresh task.
+            startupTask = nil
+          }
           do {
             try await startup()
+            guard !Task.isCancelled else { return }
             state = .running
+          } catch is CancellationError {
+            // Cancellation is a normal control-flow path here. Recovery can
+            // cancel startup intentionally before rewinding state, so there is
+            // nothing to report to the error UI.
           } catch {
             caughtError(error)
           }
         }
+        startupTask = task
       default:
         break
     }
@@ -86,6 +114,9 @@ import SwiftUI
   }
 
   func recoverFromError() {
+    startupTask?.cancel()
+    startupTask = nil
+
     switch state {
       case .error(_, let previousState):
         state = previousState

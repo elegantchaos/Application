@@ -53,6 +53,7 @@ struct TestApplication: App {
 @Observable
 class TestEngine: AppEngine {
   var state: AppState = .uninitialised
+  @ObservationIgnored var startupTask: Task<Void, Never>? = nil
   
   var constantService: ConstantService
   var slowService: SlowStartupService?
