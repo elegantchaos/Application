@@ -29,10 +29,18 @@ let package = Package(
 
 for target in package.targets {
   switch target.type {
-    case .regular, .test:
+    case .regular:
       var settings = target.swiftSettings ?? []
       settings.append(contentsOf: [
         .defaultIsolation(MainActor.self),
+        .enableUpcomingFeature("NonisolatedNonsendingByDefault"),
+        .enableUpcomingFeature("InferIsolatedConformances"),
+        .enableExperimentalFeature("SendableProhibitsMainActorInference"),
+      ])
+      target.swiftSettings = settings
+    case .test:
+      var settings = target.swiftSettings ?? []
+      settings.append(contentsOf: [
         .enableUpcomingFeature("NonisolatedNonsendingByDefault"),
         .enableUpcomingFeature("InferIsolatedConformances"),
         .enableExperimentalFeature("SendableProhibitsMainActorInference"),
