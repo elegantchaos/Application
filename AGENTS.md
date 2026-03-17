@@ -1,99 +1,40 @@
-# ActionStatus Application Package — AI Coding Agent Guide
-
-This repository contains the `Application` Swift package used by ActionStatus for shared app-layer logic and test utilities.
+# Application Package — AI Coding Agent Guide
 
 ## Project Specific Rules
 
-### Core constraints
-
-- Target iOS 26.0+, macOS 26.0+, and tvOS 26.0+.
-- Follow project Swift/tooling constraints from `Package.swift` (currently Swift tools 6.2 with strict concurrency-related settings).
-- Keep shared logic inside this package and avoid duplicating logic across app targets.
-
-### Code placement
-
-- Keep primary package code in `Sources/Application/`.
-- Keep package tests in `Tests/ApplicationTests/`.
-- Treat `Extras/TestApplication/` as support/demo infrastructure, not a place for production shared logic.
-
-### Project references
-
-- `Package.swift`
-- `Sources/Application/`
-- `Tests/ApplicationTests/`
-- `Extras/Documentation/Guidelines/README.md` (if present)
-
-Reference guideline docs in `Extras/Documentation/Guidelines/` for detailed instructions.
+- This package provides shared app-level orchestration, lifecycle support, state modeling, and change monitoring for SwiftUI applications.
+- Target macOS 26.0+, iOS 26.0+, and tvOS 26.0+.
+- The codebase uses Swift 6.2 with modern concurrency.
+- Regular package targets default to `MainActor` isolation. Keep executor assumptions explicit and avoid accidental cross-actor access.
 
 ## Standard Rules
 
-### Baseline methodology
-
-- Use red/green TDD for non-UI code; create previews for UI code where relevant.
 - Always write good code and keep behavior, tests, and docs aligned.
-- Apply KISS, YAGNI, DRY, explicit dependencies, composition over inheritance, command-query separation, least knowledge, structured concurrency, design by contract, and idempotency.
-
-Reference:
-- `Extras/Documentation/Guidelines/Principles.md`
-- `Extras/Documentation/Guidelines/Good Code.md`
-
-### Scope and change strategy
-
+- Use red/green TDD for non-UI code.
+- Create previews for UI code.
+- Apply DRY and single-source-of-truth rules, and prefer KISS, YAGNI, make-illegal-states-unrepresentable, explicit dependencies, composition over inheritance, command-query separation, least knowledge, structured concurrency, design by contract, and idempotency.
 - Prefer minimal, focused changes that solve the requested problem.
-- Preserve existing architecture/style unless change is requested or clearly needed.
 - Prefer fixing root causes over layered workarounds.
-
-### Workflow expectations
-
-1. Understand request boundaries.
-2. Inspect relevant code/docs before editing.
-3. Apply the smallest coherent change set.
-4. Add/update tests for behavior changes where feasible.
-5. Run relevant validation checks.
-6. Report changes, validation status, and residual risks.
-
-Reference:
-- `Extras/Documentation/Guidelines/Testing.md`
-
-### Engineering, safety, and source quality
-
+- Modernise or adopt a new architecture/style if appropriate, but avoid leaving mixed styles behind without a clear reason.
+- Understand request boundaries, inspect relevant code/docs before editing, apply the smallest coherent change set, add or update tests for behavior changes, run relevant validation checks, and report changes, validation status, and residual risks.
+- Follow the validation workflow in ~/.local/share/agents/references/Validation.md and use ~/.local/share/skills/validation-flow-skill/SKILL.md for standard validation when it applies. If a check cannot be run, say so and explain why.
 - Prioritize correctness, clarity, and maintainability.
 - Keep interfaces explicit and intentionally small.
 - Avoid hidden coupling and surprising side effects.
 - Do not add dependencies without clear justification.
-- Never expose or commit credentials/secrets.
-- Do not perform destructive actions without explicit approval.
+- Never expose or commit credentials or secrets.
+- Use trusted primary sources for technical decisions and external references, following ~/.local/share/agents/references/Trusted Sources.md.
+- Follow ~/.local/share/agents/references/COMMON.md, ~/.local/share/agents/references/Good Code.md, ~/.local/share/agents/references/Principles.md, and ~/.local/share/agents/references/languages/Swift.md.
+- Use ~/.local/share/skills/SwiftUI-Agent-Skill/swiftui-pro/SKILL.md for SwiftUI-specific guidance, ~/.local/share/skills/Swift-Concurrency-Agent-Skill/swift-concurrency-pro/SKILL.md for concurrency decisions, and ~/.local/share/skills/Swift-Testing-Agent-Skill/swift-testing-pro/SKILL.md for Swift Testing guidance.
+- Use ~/.local/share/skills/codex-git-skill/SKILL.md for git operations and ~/.local/share/skills/codex-github-skill/SKILL.md for GitHub workflows.
+- Do not perform irreversible destructive actions without explicit approval.
 - Avoid unrelated refactors during focused tasks.
 - If unexpected workspace changes appear, pause and confirm direction.
-- Use trusted, primary sources for uncertain facts and external references.
-
-Reference:
-- `Extras/Documentation/Guidelines/Trusted Sources.md`
-
-### Swift and SwiftUI expectations
-
-- Follow package Swift/platform targets and prefer modern migration-friendly Swift patterns.
-- Keep Swift files focused, visibility tight, and concurrency ownership explicit.
-- Prefer structured concurrency and clear state modeling.
-- Keep SwiftUI state intentional, views composable, and platform specialization isolated.
-
-Reference:
-- `Extras/Documentation/Guidelines/Swift.md`
-- `Extras/Documentation/Guidelines/SwiftUI.md`
-
-### GitHub workflow safety
-
 - For `gh` commands with Markdown bodies, use `--body-file` rather than inline `--body`.
-- Keep PR summaries factual, scoped to the diff, and include validation/gaps.
-
-Reference:
-- `Extras/Documentation/Guidelines/GitHub.md`
-
-### Code comments
-
-- Add compact documentation comments for each type, method/function, and member/property describing purpose.
-- Comments should add intent/context, not restate names.
-- For the primary type in a source file, add a top-level documentation comment with design/implementation detail.
+- Keep PR summaries factual, scoped to the diff, and include validation and any gaps.
+- Add compact documentation comments for each type, method or function, and member or property describing purpose.
+- Comments should add intent or context, not restate names.
+- For the primary type in a source file, add a top-level documentation comment with design or implementation detail.
 - Keep inline comments sparse and focused on subtle logic or constraints.
 
-To refresh this file, use the refresh-agents skill.
+To refresh this file, use the ~/.local/share/skills/refresh-agents-skill/SKILL.md skill.
