@@ -8,13 +8,17 @@ import Foundation
 public extension UserDefaults {
   /// Calls the supplied action whenever defaults change.
   @MainActor
-  func onChanged(_ action: @escaping @MainActor () -> Void) -> NotificationToken
+  func onChange(initial: Bool = false, _ action: @escaping @MainActor (UserDefaults) -> Void) -> NotificationToken
   {
-    NotificationCenter.default.onMainActorNotification(
+    if initial {
+      action(self)
+    }
+        
+    return NotificationCenter.default.onNotification(
       named: UserDefaults.didChangeNotification,
       object: self
     ) {
-      action()
+      action(self)
     }
   }
 }

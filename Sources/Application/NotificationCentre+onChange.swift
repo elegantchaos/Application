@@ -8,17 +8,13 @@ import Foundation
 public extension NotificationCenter {
   /// Observes notifications on the main queue and returns a token that cancels observation.
   @MainActor
-  func onMainActorNotification(
+  func onNotification(
     named name: Notification.Name,
     object: AnyObject? = nil,
     perform: @escaping @MainActor () -> Void
   ) -> NotificationToken {
-    let observer = addObserver(forName: name, object: object, queue: nil) { _ in
-      // Always enqueue onto the main actor to avoid synchronous re-entrancy when
-      // notifications are posted during one-time initialization on the main thread.
-      Task { @MainActor in
-        perform()
-      }
+    let observer = addObserver(forName: name, object: object, queue: .main) { _ in
+      MainActor.assumeIsolated { perform() }
     }
     
     return NotificationToken(center: self, observer: observer)
