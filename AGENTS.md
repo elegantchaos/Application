@@ -17,7 +17,7 @@
 - Prefer fixing root causes over layered workarounds.
 - Modernise or adopt a new architecture/style if appropriate, but avoid leaving mixed styles behind without a clear reason.
 - Understand request boundaries, inspect relevant code/docs before editing, apply the smallest coherent change set, add or update tests for behavior changes, run relevant validation checks, and report changes, validation status, and residual risks.
-- Follow the validation workflow in ~/.local/share/agents/references/Validation.md and use ~/.local/share/skills/validation-flow-skill/SKILL.md for standard validation when it applies. If a check cannot be run, say so and explain why.
+- Use the `swift-validation` skill for standard validation when it applies. If a check cannot be run, say so and explain why.
 - Prioritize correctness, clarity, and maintainability.
 - Keep interfaces explicit and intentionally small.
 - Avoid hidden coupling and surprising side effects.
