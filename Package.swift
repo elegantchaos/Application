@@ -1,7 +1,13 @@
 // swift-tools-version: 6.2
 
+// -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+//  Created by Sam Deane on 15/10/2026.
+//  Copyright © 2026 Elegant Chaos Limited. All rights reserved.
+// -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+
 import PackageDescription
 
+/// Shared application orchestration and its regression tests.
 let package = Package(
   name: "Application",
 
@@ -13,7 +19,7 @@ let package = Package(
     .library(
       name: "Application",
       targets: ["Application"]
-    ),
+    )
   ],
 
   targets: [
@@ -29,10 +35,18 @@ let package = Package(
 
 for target in package.targets {
   switch target.type {
-    case .regular, .test:
+    case .regular:
       var settings = target.swiftSettings ?? []
       settings.append(contentsOf: [
         .defaultIsolation(MainActor.self),
+        .enableUpcomingFeature("NonisolatedNonsendingByDefault"),
+        .enableUpcomingFeature("InferIsolatedConformances"),
+        .enableExperimentalFeature("SendableProhibitsMainActorInference"),
+      ])
+      target.swiftSettings = settings
+    case .test:
+      var settings = target.swiftSettings ?? []
+      settings.append(contentsOf: [
         .enableUpcomingFeature("NonisolatedNonsendingByDefault"),
         .enableUpcomingFeature("InferIsolatedConformances"),
         .enableExperimentalFeature("SendableProhibitsMainActorInference"),
