@@ -11,15 +11,18 @@ import Foundation
 /// monitoring can use the same explicit lifetime management as Observation.
 @MainActor
 public final class NotificationToken {
-  nonisolated(unsafe) private var center: NotificationCenter?
-  nonisolated(unsafe) private var observer: NSObjectProtocol?
-  
+  /// Notification center responsible for the installed observer.
+  private var center: NotificationCenter?
+
+  /// Foundation observer removed by explicit cancellation or destruction.
+  private var observer: NSObjectProtocol?
+
   /// Creates an active token for the supplied notification observer.
   public init(center: NotificationCenter, observer: NSObjectProtocol) {
     self.center = center
     self.observer = observer
   }
-  
+
   /// Prevents any future notification callbacks from being delivered.
   public func cancel() {
     if let observer {
@@ -28,8 +31,9 @@ public final class NotificationToken {
       center = nil
     }
   }
-  
-  deinit {
+
+  /// Removes any remaining observer on the same actor used by cancellation.
+  isolated deinit {
     if let observer {
       center?.removeObserver(observer)
     }

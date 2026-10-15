@@ -4,6 +4,8 @@
 - Target macOS 26.0+, iOS 26.0+, and tvOS 26.0+.
 - The codebase uses Swift 6.2 with modern concurrency.
 - Regular package targets default to `MainActor` isolation. Keep executor assumptions explicit and avoid accidental cross-actor access.
+- Keep a development journal in `Extras/Journal/`, with a dated entry for significant work and an updated `index.md`.
+- Keep a decision log in `Extras/Decisions/`. Follow `baseline:records` and confirm individual decision records before writing them.
 
 # Standard Rules
 

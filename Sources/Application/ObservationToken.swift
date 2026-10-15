@@ -3,30 +3,49 @@
 //  Copyright © 2026 Elegant Chaos Limited. All rights reserved.
 // -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
-import SwiftUI
-
-/// Cancellation token for an installed observation callback.
+/// Owns the value reader and callback for an installed observation loop.
 ///
-/// The application package uses recursive `withObservationTracking` to
-/// re-install change handlers after each observed mutation. Keeping the token
-/// separate makes that lifecycle explicit: the owner can retain the token for as
-/// long as observation should remain active, then call `cancel()` to stop any
-/// future re-registration.
+/// Call `cancel()` to stop delivery and immediately release captured resources.
+/// Installed observation keeps the token alive, so discarding the returned token
+/// leaves monitoring active. Retain it when explicit cancellation is needed.
 @MainActor
 public final class ObservationToken {
-  @ObservationIgnored private var isCancelled = false
+  /// Whether this token has permanently stopped monitoring.
+  private var isCancelled = false
 
-  /// Creates an active token.
-  public init() {
-  }
+  /// Installs the next tracking pass without retaining this token itself.
+  private var observation: (@MainActor @Sendable () -> Void)?
 
-  /// Prevents any future observation callbacks from being installed.
+  /// Reads the current value and delivers it to the caller.
+  private var handler: (@MainActor @Sendable () -> Void)?
+
+  /// Creates an active token without an installed observation.
+  public init() {}
+
+  /// Stops future callbacks and releases the value reader and handler immediately.
   public func cancel() {
     isCancelled = true
+    observation = nil
+    handler = nil
   }
 
   /// Returns whether the token has been cancelled.
-  var cancelled: Bool {
-    isCancelled
+  var cancelled: Bool { isCancelled }
+
+  /// Takes ownership of the callbacks and installs the first tracking pass.
+  func install(
+    observation: @escaping @MainActor @Sendable () -> Void,
+    handler: @escaping @MainActor @Sendable () -> Void
+  ) {
+    guard !isCancelled else { return }
+    self.observation = observation
+    self.handler = handler
+    observation()
+  }
+
+  /// Delivers a mutation and tracks the next change unless the handler cancelled.
+  func didChange() {
+    handler?()
+    observation?()
   }
 }

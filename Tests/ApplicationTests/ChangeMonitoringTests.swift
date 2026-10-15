@@ -3,67 +3,77 @@
 //  Copyright © 2026 Elegant Chaos Limited. All rights reserved.
 // -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
-import Observation
 import Testing
 
 @testable import Application
 
-/// Tests the cancellable observation helpers used by Application clients.
+/// Tests callback delivery using explicit signals from the actual handler.
+@MainActor
+@Suite(.timeLimit(.minutes(1)))
 struct ChangeMonitoringTests {
-  /// Simple observable value source for observation tests.
-  @MainActor
-  @Observable
-  final class ObservableValue {
-    var value = 0
+  /// Sequential mutations each deliver their updated value.
+  @Test
+  func sequentialChangesDeliverCallbacks() async {
+    let source = ObservableValue()
+    let (values, delivered) = AsyncStream.makeStream(of: Int.self)
+    var iterator = values.makeAsyncIterator()
+    let token = onChange(of: source.value) { delivered.yield($0) }
+    defer { token.cancel() }
+
+    source.value = 1
+    #expect(await iterator.next() == 1)
+    source.value = 2
+    #expect(await iterator.next() == 2)
   }
 
-  /// Verifies that each sequential change produces one callback.
+  /// Same-turn mutations coalesce into delivery of the latest value.
   @Test
-  @MainActor
-  func onChangeDeliversOneCallbackPerSequentialChange() async {
+  func mutationsCoalesce() async {
     let source = ObservableValue()
-    var observedValues: [Int] = []
+    let (values, delivered) = AsyncStream.makeStream(of: Int.self)
+    var iterator = values.makeAsyncIterator()
+    let token = onChange(of: source.value) { delivered.yield($0) }
+    defer { token.cancel() }
 
-    let token = onChange(of: source.value) { value in
-      observedValues.append(value)
-    }
-
-    await confirmation("first callback") { first in
-      source.value = 1
-      await Task.yield()
-      #expect(observedValues == [1])
-      first.confirm()
-    }
-
-    await confirmation("second callback") { second in
-      source.value = 2
-      await Task.yield()
-      #expect(observedValues == [1, 2])
-      second.confirm()
-    }
-
-    token.cancel()
+    source.value = 1
+    source.value = 2
+    #expect(await iterator.next() == 2)
   }
 
-  /// Verifies that cancelling the token stops later callbacks.
+  /// Cancelling from a handler prevents reinstallation and later delivery.
   @Test
-  @MainActor
-  func observationTokenCancelStopsFutureCallbacks() async {
+  func handlerCanCancelObservation() async {
     let source = ObservableValue()
-    var observedValues: [Int] = []
-
-    let token = onChange(of: source.value) { value in
-      observedValues.append(value)
+    let (values, delivered) = AsyncStream.makeStream(of: Int.self)
+    var iterator = values.makeAsyncIterator()
+    var token: ObservationToken?
+    token = onChange(of: source.value) { value in
+      token?.cancel()
+      delivered.yield(value)
+      delivered.finish()
     }
 
     source.value = 1
-    await Task.yield()
-    #expect(observedValues == [1])
-
-    token.cancel()
+    #expect(await iterator.next() == 1)
     source.value = 2
-    await Task.yield()
+    #expect(await iterator.next() == nil)
+    #expect(token?.cancelled == true)
+  }
 
-    #expect(observedValues == [1])
+  /// Discarding the token preserves the supported fire-and-forget API.
+  @Test
+  func discardedTokenKeepsObserving() async {
+    let source = ObservableValue()
+    let (values, delivered) = AsyncStream.makeStream(of: Int.self)
+    var iterator = values.makeAsyncIterator()
+    var token: ObservationToken? = onChange(of: source.value) { delivered.yield($0) }
+    weak let activeToken = token
+    token = nil
+    defer { activeToken?.cancel() }
+
+    source.value = 1
+    #expect(await iterator.next() == 1)
+    source.value = 2
+    #expect(await iterator.next() == 2)
   }
 }

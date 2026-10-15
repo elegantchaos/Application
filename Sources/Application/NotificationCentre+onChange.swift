@@ -16,7 +16,7 @@ public extension NotificationCenter {
     let observer = addObserver(forName: name, object: object, queue: .main) { _ in
       MainActor.assumeIsolated { perform() }
     }
-    
+
     return NotificationToken(center: self, observer: observer)
   }
 }

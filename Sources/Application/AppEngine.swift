@@ -6,13 +6,18 @@
 import Foundation
 import SwiftUI
 
+/// Coordinates initialization, asynchronous startup, recovery, and shell presentation.
+///
+/// Conforming engines own their state and startup task, and supply modifiers that
+/// expose services appropriate to each lifecycle phase. Call `standardLoop()` to
+/// start the shell and `recoverFromError()` to retry the interrupted phase.
 @MainActor public protocol AppEngine: AnyObject {
   /// Perform one-time, synchronous startup.
   /// This should be as quick as possible, to avoid a delay
   /// before the app shows any UI
   func initialise() throws
 
-  /// Perform asychronous startup.
+  /// Perform asynchronous startup.
   /// Whilst the app is doing this, it will be in the `.starting`
   /// state, and will be showing the startup UI.
   func startup() async throws
@@ -23,7 +28,7 @@ import SwiftUI
   /// Should an error be ignored?
   /// If this returns false, the error will put the app
   /// into the .error state and show the error ui
-  /// If it returns false, the app will continue in the state
+  /// If it returns true, the app will continue in the state
   /// it was previously in.
   func shouldIgnore(error: Error) -> Bool
 
@@ -62,10 +67,12 @@ import SwiftUI
 }
 
 @MainActor public extension AppEngine {
+  /// Starts the shell; repeated calls while startup is active have no effect.
   func standardLoop() {
     advance()
   }
 
+  /// Advances initialization or installs one owned startup invocation.
   func advance() {
     switch state {
       case .uninitialised:
@@ -77,27 +84,28 @@ import SwiftUI
           caughtError(error)
         }
       case .starting:
-        assert(startupTask == nil, "AppEngine entered .starting while startupTask was still active")
         guard startupTask == nil else { return }
 
-        // Startup is represented by a single owned task. Holding it here lets
-        // the engine prevent duplicate launches and cancel the work if recovery
-        // rewinds the state machine while startup is still in flight.
-        let task = Task {
+        // The captured handle identifies this invocation across suspension. Clear
+        // the capture on completion to break its reference back to the task.
+        var task: Task<Void, Never>?
+        task = Task { @MainActor in
           defer {
-            // Release ownership regardless of outcome so a later transition back
-            // to `.starting` can create a fresh task.
-            startupTask = nil
+            if startupTask == task {
+              startupTask = nil
+            }
+            task = nil
           }
           do {
             try await startup()
-            guard !Task.isCancelled else { return }
+            guard !Task.isCancelled, startupTask == task else { return }
             state = .running
           } catch is CancellationError {
             // Cancellation is a normal control-flow path here. Recovery can
             // cancel startup intentionally before rewinding state, so there is
             // nothing to report to the error UI.
           } catch {
+            guard !Task.isCancelled, startupTask == task else { return }
             caughtError(error)
           }
         }
@@ -107,18 +115,19 @@ import SwiftUI
     }
   }
 
+  /// Presents an error unless the engine explicitly ignores it.
   func caughtError(_ error: Error) {
     if !shouldIgnore(error: error) {
       state = .error(error, state)
     }
   }
 
+  /// Cancels interrupted startup and retries the phase captured by the error.
   func recoverFromError() {
-    startupTask?.cancel()
-    startupTask = nil
-
     switch state {
       case .error(_, let previousState):
+        startupTask?.cancel()
+        startupTask = nil
         state = previousState
         advance()
       default:
@@ -126,6 +135,7 @@ import SwiftUI
     }
   }
 
+  /// Presents the view and service environment appropriate to the current state.
   func rootView<S: View, R: View, E: View>(
     @ViewBuilder running: () -> R,
     @ViewBuilder startup: () -> S = { DefaultStartupView() },
@@ -143,27 +153,5 @@ import SwiftUI
           error(e, previousState)
       }
     }
-  }
-}
-
-public struct DefaultStartupView: View {
-  public init() { }
-  public var body: some View {
-    ProgressView()
-  }
-}
-
-public struct DefaultErrorView: View {
-  let error: Error
-  let previousState: AppState
-  
-  public init(_ error: Error, _ previousState: AppState) {
-    self.error = error
-    self.previousState = previousState
-  }
-  
-  public var body: some View {
-    let errorDesc = String(describing: error)
-    Text("Error: \(errorDesc)")
   }
 }

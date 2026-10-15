@@ -9,20 +9,20 @@ import Foundation
 public indirect enum AppState {
   /// Nothing has happened yet.
   case uninitialised
-  
+
   /// We've called initialise() and are waiting for startup() to complete.
   /// The startup UI will be showing.
   case starting
-  
+
   /// We completed startup() without error.
   /// The running UI will be showing.
   case running
-  
+
   /// We caught an error during initialisation or startup, or
   /// were given one to display.
   /// The error UI will be showing.
   case error(Error, AppState)
-  
+
   /// We're shutting down.
   /// The running UI will still be showing.
   case terminating
